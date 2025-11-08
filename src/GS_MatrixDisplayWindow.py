@@ -35,4 +35,5 @@ class MatrixDisplayWindow(QWidget):#对rref和kernel的窗口化显示
         for j in range(table.columnCount()):
             table.setColumnWidth(j, cell_size)
         layout.addWidget(table)
+
         self.setLayout(layout)
