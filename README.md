@@ -2,6 +2,8 @@
 一个交互式矩阵工具，用于线性代数中的行变换、RREF 化、零空间计算等操作。
 基于 Python、PyQt5、SymPy 和 NumPy 构建。
 
+![GS](assets/GS.jpg)
+
 于11/8/2025发布v1.0版本
 
 ![screenshot](assets/scsh1.png)
