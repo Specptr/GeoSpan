@@ -6,8 +6,6 @@
 
 于11/8/2025发布v1.0版本
 
-![screenshot](assets/scsh1.png)
-
 于11/12/2025发布v1.1版本
 
 ![screenshot](assets/v1.1.png)
