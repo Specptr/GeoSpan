@@ -37,5 +37,16 @@ STYLESHEET = """
                 background-color: #2A2A2A;   /* 单元格背景色 */
                 border: 2px solid #666666;   /* 单元格边框粗细和颜色 */
                 padding: 4px;                /* 单元格内边距 */
+
+            QTextEdit {
+                border: 10px solid #999999;
+                border-radius: 10px;
+                padding: 6px;
+                background-color: #f9f9f9;
+                font-family: Consolas;
+                font-size: 12px;
+            }
+
+
             }
         """
