@@ -1,6 +1,8 @@
-# GeoSpan by Specptr
+# GeoSpan by EnoLaice
 # 11/6/2025 - 11/8/2025
 # v1.0
+# 11/12/2025
+# v1.1
 
 import sys
 from GS_ui import QApplication, GeoSpanUI
