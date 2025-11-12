@@ -8,6 +8,9 @@
 
 ![screenshot](assets/scsh1.png)
 
+于11/12/2025发布v1.1版本
+
+![screenshot](assets/v1.1.png)
 
 ## 使用简介
 - 单元格可直接输入浮点数或整数
@@ -16,6 +19,10 @@
 - 支持加减乘除交换等行操作
 - 支持一键化简RREF
 - 支持一键生成核空间
+- 支持一键清零矩阵
+- 支持一键用1-9的随机整数填满矩阵
+- 支持回退和重做所有步骤
+- 可视化实现的行操作
 
 ## 行操作详细说明
 Target Row [_A_] x [_p_] / [_q_] + [_k_] x Row [_B_]
@@ -35,7 +42,7 @@ Target Row [_A_] x [_p_] / [_q_] + [_k_] x Row [_B_]
     - 若同时填写 k 和 B，则执行加权：Row A ← (p/q) × Row A + k × Row B
     - 所有参数支持浮点数输入，未填写的数值将使用默认值
 
-![screenshot](assets/scsh2.png)
-![screenshot](assets/scsh3.png)
+![screenshot](assets/v1.1.png)
+![screenshot](assets/v1.1_2.png)
 ![screenshot](assets/scsh4.png)
 ![screenshot](assets/scsh5.png)
