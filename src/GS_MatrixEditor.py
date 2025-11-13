@@ -1,8 +1,11 @@
 import numpy as np
 
 class MatrixEditor:
-    def __init__(self, rows=3, cols=3):
-        self.update_shape(rows, cols)
+    def __init__(self):
+        self.matrix = np.array([[1, 2, 3],
+                                [4, 5, 6],
+                                [7, 8, 9]], dtype=float)
+        self.rows, self.cols = self.matrix.shape
 
     def update_shape(self, rows, cols):
         self.rows, self.cols = rows, cols
