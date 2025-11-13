@@ -4,13 +4,7 @@
 
 ![GS](assets/GS.jpg)
 
-于11/8/2025发布v1.0版本
-
-于11/12/2025发布v1.1版本
-
-于11/13/2025发布v1.2版本
-
-![screenshot](assets/v1.2.png)
+![screenshot](assets/v1.20.png)
 
 ## 使用简介
 - 单元格可直接输入浮点数或整数
@@ -42,6 +36,7 @@ Target Row [_A_] x [_p_] / [_q_] + [_k_] x Row [_B_]
     - 若仅填写 A、p、q，则执行缩放：Row A ← (p/q) × Row A
     - 若同时填写 k 和 B，则执行加权：Row A ← (p/q) × Row A + k × Row B
     - 所有参数支持浮点数输入，未填写的数值将使用默认值
-
-![screenshot](assets/scsh4.png)
-![screenshot](assets/scsh5.png)
+    
+于11/8/2025发布v1.0版本
+于11/12/2025发布v1.1版本
+于11/13/2025发布v1.2版本
