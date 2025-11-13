@@ -10,6 +10,10 @@ from GS_MatrixEditor import MatrixEditor
 from PyQt5.QtGui import QFont
 from config import STYLESHEET
 from GS_MatrixDisplayWindow import MatrixDisplayWindow
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
 
 class GeoSpanUI(QWidget): # 窗口 运算逻辑 日志
     def __init__(self):
@@ -24,54 +28,54 @@ class GeoSpanUI(QWidget): # 窗口 运算逻辑 日志
         self.operation_history = []  # 存储每一步的矩阵快照
         self.init_ui()
 
-    def init_ui(self):#设计窗口内容
+    def init_ui(self):
         self.setWindowTitle("GeoSpan")
-        self.resize(500, 1055)
+        self.resize(900, 900)
         font = QFont("Consolas", 10)
         self.setFont(font)
-        #——————————————————————————————————————————————————————————————
-        main_layout = QVBoxLayout() # 总布局
-        #——————————————————————————————————————————————————————————————
-        maintitle_label = QLabel("GeoSpan v1.1 by EnoLaice")
+        # ======================================================
+        # 主布局
+        main_layout = QVBoxLayout()
+        # 标题
+        maintitle_label = QLabel("GeoSpan v1.2 by EnoLaice")
         main_layout.addWidget(maintitle_label)
-        #——————————————————————————————————————————————————————————————
-        table_label = QLabel("Matrix:")
-        main_layout.addWidget(table_label)
-        #——————————————————————————————————————————————————————————————
-        self.table = QTableWidget() # 表格 用于置放矩阵
-        self.table.setSizeAdjustPolicy(QTableWidget.AdjustToContents) # 表格大小自定义
+        # ======================================================
+        # 第一行：矩阵表格
+        self.table = QTableWidget()
+        self.table.setSizeAdjustPolicy(QTableWidget.AdjustToContents)
         main_layout.addWidget(self.table)
-        #——————————————————————————————————————————————————————————————
-        shape_layout = QHBoxLayout()
 
+        # 第二行：左右两栏
+        bottom_layout = QHBoxLayout()  # 第二层主容器
+        left_layout = QVBoxLayout()    # 左栏
+        right_layout = QVBoxLayout()   # 右栏
+        # ======================================================
+        # 左栏
+        # 尺寸控制区
+        shape_layout = QHBoxLayout()
         shape_layout.addWidget(QLabel("Rows:"))
         self.row_input = QLineEdit("3")
         shape_layout.addWidget(self.row_input)
-
         shape_layout.addWidget(QLabel("Cols:"))
         self.col_input = QLineEdit("3")
         shape_layout.addWidget(self.col_input)
-
         reshape_btn = QPushButton("Reshape")
         reshape_btn.clicked.connect(self.reshape_matrix)
         shape_layout.addWidget(reshape_btn)
+        left_layout.addLayout(shape_layout)
 
-        main_layout.addLayout(shape_layout)
-        #——————————————————————————————————————————————————————————————
+        # 初始化按钮区
         init_layout = QHBoxLayout()
-
+        rand_btn = QPushButton("Randomize")
+        rand_btn.clicked.connect(self.random_fill_matrix)
+        init_layout.addWidget(rand_btn)
         zero_btn = QPushButton("Clear")
         zero_btn.clicked.connect(self.clear_matrix)
         init_layout.addWidget(zero_btn)
+        left_layout.addLayout(init_layout)
 
-        rand_btn = QPushButton("Random Fill")
-        rand_btn.clicked.connect(self.random_fill_matrix)
-        init_layout.addWidget(rand_btn)
-
-        main_layout.addLayout(init_layout)
-        #——————————————————————————————————————————————————————————————
+        # 行运算输入区
         op_row1 = QHBoxLayout()
-
         self.target_input = QLineEdit()
         self.coeff1_input = QLineEdit()
         self.divisor_input = QLineEdit()
@@ -80,93 +84,98 @@ class GeoSpanUI(QWidget): # 窗口 运算逻辑 日志
 
         op_row1.addWidget(QLabel("Target Row"))
         op_row1.addWidget(self.target_input)
-
         op_row1.addWidget(QLabel("×"))
         op_row1.addWidget(self.coeff1_input)
-
         op_row1.addWidget(QLabel("/"))
         op_row1.addWidget(self.divisor_input)
 
         op_row2 = QHBoxLayout()
-
-        op_row2.addWidget(QLabel("                "))
-
+        op_row2.addWidget(QLabel(" "))
         op_row2.addWidget(QLabel("+"))
         op_row2.addWidget(self.coeff2_input)
-
         op_row2.addWidget(QLabel("× Row"))
         op_row2.addWidget(self.src2_input)
 
-        main_layout.addLayout(op_row1)
-        main_layout.addLayout(op_row2)
-        #——————————————————————————————————————————————————————————————
+        left_layout.addLayout(op_row1)
+        left_layout.addLayout(op_row2)
+
+        # 交换行
         swap_layout = QHBoxLayout()
-
-        swap_layout.addWidget(QLabel("Swap Row"))
         self.swap_a_input = QLineEdit()
-        swap_layout.addWidget(self.swap_a_input)
-
-        swap_layout.addWidget(QLabel("and Row"))
         self.swap_b_input = QLineEdit()
+        swap_layout.addWidget(QLabel("Swap Row"))
+        swap_layout.addWidget(self.swap_a_input)
+        swap_layout.addWidget(QLabel("↔"))
         swap_layout.addWidget(self.swap_b_input)
+        left_layout.addLayout(swap_layout)
 
-        main_layout.addLayout(swap_layout)
-        #——————————————————————————————————————————————————————————————
-        apply_layout = QHBoxLayout()
-
+        # 应用按钮
         apply_btn = QPushButton("Apply")
         apply_btn.clicked.connect(self.apply_combined_operation)
-        apply_layout.addWidget(apply_btn)
+        left_layout.addWidget(apply_btn)
 
-        main_layout.addLayout(apply_layout)
-        #——————————————————————————————————————————————————————————————
+        # 日志区
+        # Row Operation 日志
         row_log_layout = QHBoxLayout()
-
         self.row_operation_log_text = QTextEdit()
         self.row_operation_log_text.setReadOnly(True)
         self.row_operation_log_text.setPlainText("<Row Operation>")
+        self.row_operation_log_text.setFixedHeight(100)
         row_log_layout.addWidget(self.row_operation_log_text)
-        self.row_operation_log_text.setFixedHeight(140)
+        left_layout.addLayout(row_log_layout)
 
-        main_layout.addLayout(row_log_layout)
-        #——————————————————————————————————————————————————————————————
+        # System Log 日志
         sys_log_layout = QHBoxLayout()
-
         self.sys_operation_log_text = QTextEdit()
         self.sys_operation_log_text.setReadOnly(True)
         self.sys_operation_log_text.setPlainText("<System Log>")
+        self.sys_operation_log_text.setFixedHeight(100)
         sys_log_layout.addWidget(self.sys_operation_log_text)
-        self.sys_operation_log_text.setFixedHeight(140)
+        left_layout.addLayout(sys_log_layout)
 
-        main_layout.addLayout(sys_log_layout)
-        #——————————————————————————————————————————————————————————————
+        # 撤销重做
         unredo_layout = QHBoxLayout()
-
         undo_btn = QPushButton("Undo")
         undo_btn.clicked.connect(self.undo_last)
-        unredo_layout.addWidget(undo_btn)
-
         redo_btn = QPushButton("Redo")
         redo_btn.clicked.connect(self.redo_last)
+        unredo_layout.addWidget(undo_btn)
         unredo_layout.addWidget(redo_btn)
+        left_layout.addLayout(unredo_layout)
+        # ======================================================
+        # 右栏
+        # 绘图按钮 + Matplotlib画布
+        plot_btn = QPushButton("Plot 3D Matrix")
+        plot_btn.clicked.connect(self.plot_3d_bar)
+        right_layout.addWidget(plot_btn)
 
-        main_layout.addLayout(unredo_layout)
-        #——————————————————————————————————————————————————————————————
+        self.figure = Figure(figsize=(5, 4), facecolor="#111111")
+        self.canvas = FigureCanvas(self.figure)
+        self.canvas.setMinimumSize(400, 300)
+        right_layout.addWidget(self.canvas)
+
         analysis_layout = QHBoxLayout()
-
         rref_btn = QPushButton("RREF")
         rref_btn.clicked.connect(self.perform_rref)
-
-        null_btn = QPushButton("kernel")
+        null_btn = QPushButton("Kernel")
         null_btn.clicked.connect(self.compute_nullspace)
-
         analysis_layout.addWidget(rref_btn)
         analysis_layout.addWidget(null_btn)
-        main_layout.addLayout(analysis_layout)
-        #——————————————————————————————————————————————————————————————
+        right_layout.addLayout(analysis_layout)
+        # ======================================================
+        # 将左右布局加入第二行
+        bottom_layout.addLayout(left_layout, 1)
+        bottom_layout.addLayout(right_layout, 1)
+
+        # 第二行加入主布局
+        main_layout.addLayout(bottom_layout)
+
+        # 应用整体样式
         self.setLayout(main_layout)
+        self.update_table()
         self.reshape_matrix()
         self.setStyleSheet(STYLESHEET)
+        self.plot_3d_bar()
 
     def update_table(self): # 格式化表格，设置表格大小，控制元素居中，补齐0
         mat = self.editor.get_matrix()
@@ -357,7 +366,7 @@ class GeoSpanUI(QWidget): # 窗口 运算逻辑 日志
             self.sys_operation_count += 1
             self.row_operation_count += 1
             row_numbered_str = f"[{self.row_operation_count}] {operation_str}"
-            sys_numbered_str = f"[{self.sys_operation_count}] {operation_str}"
+            sys_numbered_str = f"[{self.sys_operation_count}] Apply row operation"
             self.sys_operation_log_text.append(sys_numbered_str)
             self.sys_operation_log_lines.append(sys_numbered_str)
             self.row_operation_log_text.append(row_numbered_str)
@@ -416,7 +425,7 @@ class GeoSpanUI(QWidget): # 窗口 运算逻辑 日志
                 self.row_operation_log_text.append(numbered)
                 self.row_operation_log_lines.append(numbered)
 
-    def perform_rref(self): #计算rref并显示
+    def perform_rref(self): # 计算rref并显示
         try:
             rows = self.table.rowCount()
             cols = self.table.columnCount()
@@ -437,7 +446,7 @@ class GeoSpanUI(QWidget): # 窗口 运算逻辑 日志
         except Exception as e:
             QMessageBox.warning(self, "RREF Error", str(e))
 
-    def compute_nullspace(self):#计算kernel并显示
+    def compute_nullspace(self): # 计算kernel并显示
         try:
             rows = self.table.rowCount()
             cols = self.table.columnCount()
@@ -456,3 +465,60 @@ class GeoSpanUI(QWidget): # 窗口 运算逻辑 日志
             self.null_window.show()
         except Exception as e:
             QMessageBox.warning(self, "Null Space Error", str(e))
+
+    def plot_3d_bar(self): # 3D绘图
+        rows = self.table.rowCount()
+        cols = self.table.columnCount()
+        mat = np.zeros((rows, cols), dtype=float)
+        for i in range(rows):
+            for j in range(cols):
+                item = self.table.item(i, j)
+                if item and item.text().strip():
+                    try:
+                        mat[i, j] = float(item.text())
+                    except ValueError:
+                        pass
+
+        self.figure.clear()
+        ax = self.figure.add_subplot(111, projection='3d')
+        ax.set_facecolor("#000000")
+        self.figure.patch.set_facecolor('#000000')
+        x, y = np.meshgrid(np.arange(cols), np.arange(rows))
+        x = x.ravel()
+        y = y.ravel()
+        z = np.zeros_like(x)
+        dz = mat.ravel()
+        dx = 0.3 * (cols / max(rows, cols))
+        dy = 0.3 * (rows / max(rows, cols))
+        ax.bar3d(x, y, z, dx, dy, dz, color="#ffffff", edgecolor="#000000", alpha=0.6)
+        ax.set_xlabel('x: row', color='#ffffff')
+        ax.set_ylabel('y: column', color='#ffffff')
+        ax.set_zlabel('z: value', color='#ffffff')
+        ax.set_xticks(np.arange(cols))
+        ax.set_yticks(np.arange(rows))
+        ax.set_xticklabels(np.arange(1, cols + 1), color='#ffffff')
+        ax.set_yticklabels(np.arange(1, rows + 1), color='#ffffff')
+        ax.tick_params(axis='z', colors='#ffffff')
+        for xi, yi, zi in zip(x, y, dz):
+            label = f'{int(zi)}' if zi.is_integer() else f'{zi:.1f}'
+            ax.text(xi + dx / 2, yi + dy / 2, zi + 0.2, label,
+                    color="#FFFF00", ha='center', va='bottom', fontsize=10)
+        ax.set_title('Your Matrix', color='#ffffff', fontsize=14)
+        ax.view_init(elev=30, azim=-120)
+        gray = (0.2, 0.2, 0.2, 0)
+        ax.xaxis.set_pane_color(gray)
+        ax.yaxis.set_pane_color(gray)
+        ax.zaxis.set_pane_color(gray)
+        ax.xaxis.line.set_color("#FF0000")
+        ax.yaxis.line.set_color("#0000FF")
+        ax.zaxis.line.set_color("#00FF00")
+        ax.grid(False)
+        grid_x = np.arange(-0.3, cols + 0.7, 1)
+        grid_y = np.arange(-0.3, rows + 0.7, 1)
+        for gx in grid_x:
+            ax.plot([gx, gx], [-0.3, rows - 0.3], zs=0, zdir='z', color="#ffffff", linewidth=0.5)
+        for gy in grid_y:
+            ax.plot([-0.3, cols - 0.3], [gy, gy], zs=0, zdir='z', color='#ffffff', linewidth=0.5)
+        self.canvas.setStyleSheet("border: 2px solid white;")
+
+        self.canvas.draw()
