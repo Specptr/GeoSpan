@@ -481,8 +481,8 @@ class GeoSpanUI(QWidget): # 窗口 运算逻辑 日志
 
         self.figure.clear()
         ax = self.figure.add_subplot(111, projection='3d')
-        ax.set_facecolor("#000000")
-        self.figure.patch.set_facecolor('#000000')
+        ax.set_facecolor("#1c1c1c")
+        self.figure.patch.set_facecolor("#1c1c1c")
         x, y = np.meshgrid(np.arange(cols), np.arange(rows))
         x = x.ravel()
         y = y.ravel()
