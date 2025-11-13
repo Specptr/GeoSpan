@@ -1,8 +1,9 @@
+![GS](assets/GS.jpg)
+---
+
 # GeoSpan - Interactive Matrix Editor & Linear Algebra Tool
 一个交互式矩阵工具，用于线性代数中的行变换、RREF 化、零空间计算等操作。
 基于 Python、PyQt5、SymPy 和 NumPy 构建。
-
-![GS](assets/GS.jpg)
 
 ![screenshot](assets/v1.20.png)
 
