@@ -3,6 +3,8 @@
 # v1.0
 # 11/12/2025
 # v1.1
+# 11/13/2025
+# v1.2
 
 import sys
 from GS_ui import QApplication, GeoSpanUI
