@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (
 from GS_MatrixEditor import MatrixEditor
 from PyQt5.QtGui import QFont
 from config import STYLESHEET
-from GS_MatrixDisplayWindow import MatrixDisplayWindow
+from GS_MatrixDisplayWindow import MatrixDisplayWindow, EigenDisplayWindow, DiagonalizeDisplayWindow, MessageWindow
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -30,20 +30,48 @@ class GeoSpanUI(QWidget): # 窗口 运算逻辑 日志
 
     def init_ui(self):
         self.setWindowTitle("GeoSpan")
-        self.resize(900, 900)
+        self.resize(900, 1000)
         font = QFont("Consolas", 10)
         self.setFont(font)
         # ======================================================
         # 主布局
         main_layout = QVBoxLayout()
-        # 标题
-        maintitle_label = QLabel("GeoSpan v1.2 by EnoLaice")
-        main_layout.addWidget(maintitle_label)
+
+        hint_layout = QHBoxLayout()
+        MatrixA_label = QLabel("|    Matrix A    |")
+        VectorV_label = QLabel("| Vector v | Vector Av |")
+        VectorV_label.setAlignment(Qt.AlignRight)
+        hint_layout.addWidget(MatrixA_label)
+        hint_layout.addWidget(VectorV_label)
+        main_layout.addLayout(hint_layout)
         # ======================================================
-        # 第一行：矩阵表格
+        # 第一行：五等份布局
+        top_layout = QHBoxLayout()
+
+        # 主矩阵表格（占前三份）
         self.table = QTableWidget()
         self.table.setSizeAdjustPolicy(QTableWidget.AdjustToContents)
-        main_layout.addWidget(self.table)
+        top_layout.addWidget(self.table)
+
+        # 可填数的列向量表格（占一份）
+        self.input_vector = QTableWidget()
+        self.input_vector.setColumnCount(1)
+        self.input_vector.setFixedWidth(125)
+        top_layout.addWidget(self.input_vector, stretch=1)
+
+        # 矩阵变换后的列向量表格（占一份，不可编辑）
+        self.output_vector = QTableWidget()
+        self.output_vector.setColumnCount(1)
+        self.output_vector.setFixedWidth(125)
+        self.output_vector.setEditTriggers(QTableWidget.NoEditTriggers)  # 禁止编辑
+        top_layout.addWidget(self.output_vector, stretch=1)
+
+        # 把第一行加到主布局
+        main_layout.addLayout(top_layout)
+        #水印
+        maintitle_label = QLabel("◇▪ ▫▪ ▫▪ ▪ ▫◆     GeoSpan v1.3 by EnoLaice     ◇▪ ▫▪ ▫▪ ▫▪ ▫◆\n")
+        maintitle_label.setAlignment(Qt.AlignCenter)
+        main_layout.addWidget(maintitle_label)
 
         # 第二行：左右两栏
         bottom_layout = QHBoxLayout()  # 第二层主容器
@@ -142,9 +170,17 @@ class GeoSpanUI(QWidget): # 窗口 运算逻辑 日志
         unredo_layout.addWidget(undo_btn)
         unredo_layout.addWidget(redo_btn)
         left_layout.addLayout(unredo_layout)
+
+        manual_layout = QHBoxLayout()
+        manual_btn = QPushButton("Manual")
+        manual_layout.addWidget(manual_btn)
+        left_layout.addLayout(manual_layout)
         # ======================================================
         # 右栏
-        # 绘图按钮 + Matplotlib画布
+        matrix_vector_calc_button = QPushButton("Do Linear Map")
+        matrix_vector_calc_button.clicked.connect(self.update_output_vector)
+        right_layout.addWidget(matrix_vector_calc_button)
+
         plot_btn = QPushButton("Plot 3D Matrix")
         plot_btn.clicked.connect(self.plot_3d_bar)
         right_layout.addWidget(plot_btn)
@@ -162,44 +198,175 @@ class GeoSpanUI(QWidget): # 窗口 运算逻辑 日志
         analysis_layout.addWidget(rref_btn)
         analysis_layout.addWidget(null_btn)
         right_layout.addLayout(analysis_layout)
+
+        eigen_layout = QHBoxLayout()
+        eigenvector_btn = QPushButton("Eigenvectors")
+        eigenvector_btn.clicked.connect(self.compute_eigenvectors)
+        diagonalize_btn = QPushButton("Diagonalize")
+        diagonalize_btn.clicked.connect(self.compute_diagonalize)
+        eigen_layout.addWidget(eigenvector_btn)
+        eigen_layout.addWidget(diagonalize_btn)
+        right_layout.addLayout(eigen_layout)
         # ======================================================
         # 将左右布局加入第二行
         bottom_layout.addLayout(left_layout, 1)
         bottom_layout.addLayout(right_layout, 1)
-
         # 第二行加入主布局
         main_layout.addLayout(bottom_layout)
 
         # 应用整体样式
         self.setLayout(main_layout)
         self.update_table()
+        self.init_default_vector()
+        self.update_output_vector()   # 初始化计算一次
         self.reshape_matrix()
         self.setStyleSheet(STYLESHEET)
         self.plot_3d_bar()
 
-    def update_table(self): # 格式化表格，设置表格大小，控制元素居中，补齐0
+    def update_table(self):
         mat = self.editor.get_matrix()
         self.table.horizontalHeader().hide()
-        self.table.verticalHeader().hide() # 隐藏表头
+        self.table.verticalHeader().hide()  # 隐藏表头
         self.table.setRowCount(mat.shape[0])
         self.table.setColumnCount(mat.shape[1])
+
         for i in range(mat.shape[0]):
             for j in range(mat.shape[1]):
-                # 转换字符串为整数或浮点数
-                value = " " if np.isnan(mat[i, j]) else str(int(mat[i, j])) if mat[i, j].is_integer() else str(mat[i, j])
-                item = QTableWidgetItem(value)
+                # 如果值是 NaN，逻辑上设置为0，显示为空格
+                if np.isnan(mat[i, j]):
+                    display_text = " "
+                    mat[i, j] = 0.0
+                else:
+                    val = mat[i, j]
+                    # 显示整数或浮点数
+                    display_text = str(int(val)) if val.is_integer() else str(val)
+
+                item = QTableWidgetItem(display_text)
                 item.setTextAlignment(Qt.AlignCenter)
-                self.table.setItem(i, j, item) # 填入表格
+                self.table.setItem(i, j, item)
+
+        # 设置单元格大小为正方形
         cell_size = 65
         for i in range(self.table.rowCount()):
             self.table.setRowHeight(i, cell_size)
             for j in range(self.table.columnCount()):
-                self.table.setColumnWidth(j, cell_size) # 控制表格形状为正方形
+                self.table.setColumnWidth(j, cell_size)
                 item = self.table.item(i, j)
                 if not item:
-                    item = QTableWidgetItem("0")
+                    # 未创建单元格，也当作 0 逻辑值，显示空格
+                    item = QTableWidgetItem(" ")
+                    mat[i, j] = 0.0
                     self.table.setItem(i, j, item)
                 item.setTextAlignment(Qt.AlignCenter)
+
+        # 保存修改后的矩阵
+        self.editor.set_matrix(mat)
+
+        # 同步更新输入/输出向量表格
+        self.update_vector_tables()
+        self.update_output_vector()
+
+
+    def init_default_vector(self):
+        rows = self.table.rowCount()
+        self.input_vector.setRowCount(rows)
+        for i in range(rows):
+            item = QTableWidgetItem("1")
+            item.setTextAlignment(Qt.AlignCenter)
+            self.input_vector.setItem(i, 0, item)
+
+    def update_vector_tables(self):
+        mat = self.editor.get_matrix()
+        rows, cols = mat.shape
+        # 输入列向量
+        self.input_vector.setRowCount(cols)
+        self.input_vector.setColumnCount(1)
+        self.input_vector.horizontalHeader().hide()
+        self.input_vector.verticalHeader().hide()
+
+        for i in range(cols):
+            item = self.input_vector.item(i, 0)
+            if not item or item.text().strip() == "":
+                item = QTableWidgetItem("1")  # 默认填 1
+                self.input_vector.setItem(i, 0, item)
+            item.setTextAlignment(Qt.AlignCenter)
+
+        cell_size = 65
+        for i in range(cols):
+            self.input_vector.setRowHeight(i, cell_size)
+        self.input_vector.setColumnWidth(0, cell_size)
+        # 输出列向量
+        self.output_vector.setRowCount(rows)
+        self.output_vector.setColumnCount(1)
+        self.output_vector.horizontalHeader().hide()
+        self.output_vector.verticalHeader().hide()
+        self.output_vector.setEditTriggers(QTableWidget.NoEditTriggers) # 只读
+
+        for i in range(rows):
+            item = self.output_vector.item(i, 0)
+            if not item:
+                item = QTableWidgetItem("")
+                self.output_vector.setItem(i, 0, item)
+            item.setTextAlignment(Qt.AlignCenter)
+
+        for i in range(rows):
+            self.output_vector.setRowHeight(i, cell_size)
+        self.output_vector.setColumnWidth(0, cell_size)
+
+    def get_input_vector(self):
+        rows = self.input_vector.rowCount()
+        vec = np.zeros((rows, 1), dtype=float)
+        for i in range(rows):
+            item = self.input_vector.item(i, 0)
+            text = item.text().strip() if item else ""
+            if text == "" or text == " ":
+                vec[i, 0] = 0.0
+            else:
+                try:
+                    num = float(text)
+                    vec[i, 0] = num
+                except:
+                    vec[i, 0] = 0.0
+        return vec
+
+    def set_output_vector(self, vec):
+        rows = vec.shape[0]
+        self.output_vector.setRowCount(rows)
+
+        for i in range(rows):
+            v = vec[i, 0]
+            if np.isnan(v):
+                text = " "
+            elif float(v).is_integer():
+                text = str(int(v))
+            else:
+                text = str(v)
+
+            item = QTableWidgetItem(text)
+            item.setTextAlignment(Qt.AlignCenter)
+            self.output_vector.setItem(i, 0, item)
+
+    def update_output_vector(self):
+        mat = self.editor.get_matrix()
+        rows, cols = self.table.rowCount(), self.table.columnCount()
+        for i in range(rows):
+            for j in range(cols):
+                item = self.table.item(i, j)
+                text = item.text().strip() if item else ""
+                if text in ["", " "]:
+                    mat[i, j] = 0.0  # 空格当0
+                else:
+                    try:
+                        mat[i, j] = float(text)
+                    except:
+                        mat[i, j] = 0.0
+        self.editor.set_matrix(mat)
+        try:
+            vec = self.get_input_vector()
+            result = self.editor.multiply_vector(vec)
+            self.set_output_vector(result)
+        except Exception as e:
+            print("Matrix multiply error:", e)
 
     def reshape_matrix(self): # 修改矩阵大小
         try:
@@ -229,6 +396,7 @@ class GeoSpanUI(QWidget): # 窗口 运算逻辑 日志
                 "log": log_text
             })
             self.undo_stack.clear()
+            self.plot_3d_bar()
         except ValueError:
             QMessageBox.warning(self, "Error", "Invalid row/col input")
 
@@ -248,11 +416,13 @@ class GeoSpanUI(QWidget): # 窗口 运算逻辑 日志
             })
         self.sys_operation_log_text.append(log_text)
         self.sys_operation_log_lines.append(log_text)
+        self.update_output_vector()
+        self.plot_3d_bar()
 
-    def random_fill_matrix(self): # 填满随机1-9整数
+    def random_fill_matrix(self): # 填满随机-9~9整数
         rows = self.table.rowCount()
         cols = self.table.columnCount()
-        rand_mat = np.random.randint(1, 10, size=(rows, cols)).astype(float)
+        rand_mat = np.random.randint(-9, 10, size=(rows, cols)).astype(float)
         self.editor.set_matrix(rand_mat)
         self.update_table()
         self.sys_operation_count += 1
@@ -265,6 +435,8 @@ class GeoSpanUI(QWidget): # 窗口 运算逻辑 日志
                 "log": log_text
             })
         self.undo_stack.clear()
+        self.update_output_vector()
+        self.plot_3d_bar()
 
     def apply_combined_operation(self): # 实现行操作
         try:
@@ -441,7 +613,7 @@ class GeoSpanUI(QWidget): # 窗口 运算逻辑 日志
             sym_mat = Matrix(mat.tolist()) #numpy换sumpy的Matrix
             rref_mat, _ = sym_mat.rref()
             rref_np = rref_mat.tolist()
-            self.rref_window = MatrixDisplayWindow(rref_np, title="RREF")
+            self.rref_window = MatrixDisplayWindow(rref_np, title="RREF", event="rref")
             self.rref_window.show()
         except Exception as e:
             QMessageBox.warning(self, "RREF Error", str(e))
@@ -460,8 +632,12 @@ class GeoSpanUI(QWidget): # 窗口 运算逻辑 日志
                         except ValueError:
                             pass
             nullspace = Matrix(mat.tolist()).nullspace()
-            vectors = [v.T.tolist()[0] for v in nullspace]
-            self.null_window = MatrixDisplayWindow(vectors, title="Kernel", show_zero_if_empty=True)
+            if nullspace:
+                # 转置
+                vectors = np.array([v.T.tolist()[0] for v in nullspace], dtype=float).T.tolist()
+            else:
+                vectors = []
+            self.null_window = MatrixDisplayWindow(vectors, title="Kernel", show_zero_if_empty=True, event="kernel")
             self.null_window.show()
         except Exception as e:
             QMessageBox.warning(self, "Null Space Error", str(e))
@@ -503,7 +679,7 @@ class GeoSpanUI(QWidget): # 窗口 运算逻辑 日志
             label = f'{int(zi)}' if zi.is_integer() else f'{zi:.1f}'
             ax.text(xi + dx / 2, yi + dy / 2, zi + 0.2, label,
                     color="#FFFF00", ha='center', va='bottom', fontsize=10)
-        ax.set_title('Your Matrix', color='#ffffff', fontsize=14)
+        ax.set_title('◄ Your Matrix ►', color='#ffffff', fontsize=12)
         ax.view_init(elev=30, azim=-120)
         gray = (0.2, 0.2, 0.2, 0)
         ax.xaxis.set_pane_color(gray)
@@ -523,3 +699,50 @@ class GeoSpanUI(QWidget): # 窗口 运算逻辑 日志
 
         self.canvas.draw()
 
+    def compute_eigenvectors(self):
+        try:
+            rows = self.table.rowCount()
+            cols = self.table.columnCount()
+            mat = np.zeros((rows, cols))
+
+            for i in range(rows):
+                for j in range(cols):
+                    item = self.table.item(i, j)
+                    if item and item.text().strip():
+                        try:
+                            mat[i, j] = float(item.text())
+                        except:
+                            pass
+            sym_mat = Matrix(mat.tolist())
+            eigen_data = sym_mat.eigenvects()  # 返回特征值/重数/向量列表
+            self.eigen_window = EigenDisplayWindow(eigen_data)
+            self.eigen_window.show()
+
+        except:
+            self.error_window = MessageWindow()
+            self.error_window.show()
+
+    def compute_diagonalize(self):
+        try:
+            rows = self.table.rowCount()
+            cols = self.table.columnCount()
+            mat = np.zeros((rows, cols))
+
+            for i in range(rows):
+                for j in range(cols):
+                    item = self.table.item(i, j)
+                    if item and item.text().strip():
+                        try:
+                            mat[i, j] = float(item.text())
+                        except:
+                            pass
+            sym_mat = Matrix(mat.tolist())
+            P, D = sym_mat.diagonalize()
+            P_np = np.array(P.tolist(), dtype=float)
+            D_np = np.array(D.tolist(), dtype=float)
+            self.diag_window = DiagonalizeDisplayWindow(P_np, D_np)
+            self.diag_window.show()
+
+        except:
+            self.error_window = MessageWindow()
+            self.error_window.show()
