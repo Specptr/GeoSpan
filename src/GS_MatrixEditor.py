@@ -19,3 +19,9 @@ class MatrixEditor:
 
     def set_matrix(self, new_matrix):
         self.matrix = new_matrix.copy()
+
+    def multiply_vector(self, vec):
+        mat = self.matrix
+        if mat.shape[1] != vec.shape[0]:
+            raise ValueError("Row inequal")
+        return np.dot(mat, vec)
