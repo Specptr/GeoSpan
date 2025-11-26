@@ -171,10 +171,14 @@ class GeoSpanUI(QWidget): # 窗口 运算逻辑 日志
         unredo_layout.addWidget(redo_btn)
         left_layout.addLayout(unredo_layout)
 
-        manual_layout = QHBoxLayout()
-        manual_btn = QPushButton("Manual")
-        manual_layout.addWidget(manual_btn)
-        left_layout.addLayout(manual_layout)
+        analysis_layout = QHBoxLayout()
+        rref_btn = QPushButton("RREF")
+        rref_btn.clicked.connect(self.perform_rref)
+        null_btn = QPushButton("Kernel")
+        null_btn.clicked.connect(self.compute_nullspace)
+        analysis_layout.addWidget(rref_btn)
+        analysis_layout.addWidget(null_btn)
+        left_layout.addLayout(analysis_layout)
         # ======================================================
         # 右栏
         matrix_vector_calc_button = QPushButton("Do Linear Map")
@@ -189,15 +193,6 @@ class GeoSpanUI(QWidget): # 窗口 运算逻辑 日志
         self.canvas = FigureCanvas(self.figure)
         self.canvas.setMinimumSize(400, 300)
         right_layout.addWidget(self.canvas)
-
-        analysis_layout = QHBoxLayout()
-        rref_btn = QPushButton("RREF")
-        rref_btn.clicked.connect(self.perform_rref)
-        null_btn = QPushButton("Kernel")
-        null_btn.clicked.connect(self.compute_nullspace)
-        analysis_layout.addWidget(rref_btn)
-        analysis_layout.addWidget(null_btn)
-        right_layout.addLayout(analysis_layout)
 
         eigen_layout = QHBoxLayout()
         eigenvector_btn = QPushButton("Eigenvectors")
